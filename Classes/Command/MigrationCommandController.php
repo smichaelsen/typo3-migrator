@@ -2,6 +2,8 @@
 
 namespace AppZap\Migrator\Command;
 
+use TYPO3\CMS\Core\Messaging\FlashMessage;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Extbase\Mvc\Controller\CommandController;
 
 class MigrationCommandController extends CommandController {
@@ -45,6 +47,7 @@ class MigrationCommandController extends CommandController {
 		$highestExecutedVersion = NULL;
 		$lastExecutedVersion = intval($this->registry->get('AppZap\\Migrator', 'lastExecutedVersion'));
 		$errors = array();
+		$executedFiles = 0;
 		foreach ($iterator as $fileinfo) {
 			/** @var $fileinfo \DirectoryIterator */
 			if ($fileinfo->getExtension() === 'sql') {
@@ -65,16 +68,60 @@ class MigrationCommandController extends CommandController {
 					foreach ($ouputMessages as $ouputMessage) {
 						if (trim($ouputMessage) && strpos($ouputMessage, 'Warning') === FALSE) {
 							if (!is_array($errors[$fileVersion])) {
-								$errors[$fileVersion] = array();
+								$errors[$fileinfo->getFilename()] = array();
 							}
-							$errors[$fileVersion][] = $ouputMessage;
+							$errors[$fileinfo->getFilename()][] = $ouputMessage;
 						}
 					}
+					$executedFiles++;
 					$highestExecutedVersion = max($highestExecutedVersion, $fileVersion);
 				}
 			}
 		}
+		$this->enqueueFlashMessages($executedFiles, $errors);
 		$this->registry->set('AppZap\\Migrator', 'lastExecutedVersion', max($lastExecutedVersion, $highestExecutedVersion));
+	}
+
+	/**
+	 * @param $message
+	 * @param $title
+	 * @param int $severity
+	 */
+	protected function flashMessage($message, $title = '', $severity = FlashMessage::OK) {
+		if (!isset($this->flashMessageService)) {
+			$this->flashMessageService = GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Messaging\\FlashMessageService');
+		}
+		/** @var $defaultFlashMessageQueue \TYPO3\CMS\Core\Messaging\FlashMessageQueue */
+		$defaultFlashMessageQueue = $this->flashMessageService->getMessageQueueByIdentifier();
+		$defaultFlashMessageQueue->enqueue(
+			GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Messaging\\FlashMessage', $message, $title, $severity)
+		);
+	}
+
+	/**
+	 * @param $executedFiles
+	 * @param $errors
+	 */
+	protected function enqueueFlashMessages($executedFiles, $errors) {
+		$flashMessageTitle = 'Migration Command';
+		if ($executedFiles === 0) {
+			$this->flashMessage('Everything up to date. No migrations needed.', $flashMessageTitle, FlashMessage::NOTICE);
+		} else {
+			if (count($errors) !== $executedFiles) {
+				$this->flashMessage('Migration of ' . $executedFiles . ' file' . ($executedFiles > 1 ? 's' : '') . '  completed.', $flashMessageTitle, FlashMessage::OK);
+			} else {
+				$this->flashMessage('Migration failed.', $flashMessageTitle, FlashMessage::ERROR);
+			}
+			if (count($errors)) {
+				$errorMessage = 'The following error' . (count($errors) > 1 ? 's' : '') . ' occured:';
+				$errorMessage .= '<ul>';
+				foreach ($errors as $filename => $error) {
+					$errorMessage .= '<li>File ' . $filename . ': ' . join('<br>', $error) . '</li>';
+				}
+				$errorMessage .= '</ul>';
+				$this->flashMessage($errorMessage, $flashMessageTitle, FlashMessage::ERROR);
+			}
+		}
 	}
 
 }
