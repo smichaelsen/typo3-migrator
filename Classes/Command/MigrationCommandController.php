@@ -88,6 +88,9 @@ class MigrationCommandController extends CommandController {
 	 * @param int $severity
 	 */
 	protected function flashMessage($message, $title = '', $severity = FlashMessage::OK) {
+		if (defined('TYPO3_cliMode')) {
+			$this->output($title . ': ' . $message);
+		}
 		if (!isset($this->flashMessageService)) {
 			$this->flashMessageService = GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Messaging\\FlashMessageService');
 		}
