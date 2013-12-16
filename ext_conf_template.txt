@@ -1,2 +1,5 @@
 # cat=basic/file/1; type=string; label=Path to the folder with SQL files:relative to the web root
 sqlFolderPath = _sql
+
+# cat=basic/file/1; type=string; label=Path to the mysql binary
+mysqlBinaryPath = /usr/bin/mysql

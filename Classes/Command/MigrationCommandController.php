@@ -19,11 +19,6 @@ class MigrationCommandController extends CommandController {
 	/**
 	 * @var string
 	 */
-	protected $mySqlBinary = '/usr/local/mysql/bin/mysql';
-
-	/**
-	 * @var string
-	 */
 	protected $shellCommandTemplate = '%s --default-character-set=UTF8 -u"%s" -p"%s" -h "%s" -D "%s" < "%s" 2>&1';
 
 	/**
@@ -58,7 +53,7 @@ class MigrationCommandController extends CommandController {
 					$filePath = $fileinfo->getPathname();
 					$shellCommand = sprintf(
 						$this->shellCommandTemplate,
-						$this->mySqlBinary,
+						$this->extensionConfiguration['mysqlBinaryPath'],
 						$GLOBALS['TYPO3_CONF_VARS']['DB']['username'],
 						$GLOBALS['TYPO3_CONF_VARS']['DB']['password'],
 						$GLOBALS['TYPO3_CONF_VARS']['DB']['host'],
