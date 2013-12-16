@@ -21,7 +21,7 @@ class MigrationCommandController extends CommandController {
 	/**
 	 * @var string
 	 */
-	protected $shellCommandTemplate = '%s --default-character-set=UTF8 -u"%s" -p"%s" -h "%s" -D "%s" < "%s" 2>&1';
+	protected $shellCommandTemplate = '%s --default-character-set=UTF8 -u"%s" -p"%s" -h "%s" -D "%s" -e "source %s" 2>&1';
 
 	/**
 	 * @var \TYPO3\CMS\Core\Registry
