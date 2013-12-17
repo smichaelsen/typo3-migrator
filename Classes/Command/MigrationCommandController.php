@@ -111,7 +111,7 @@ class MigrationCommandController extends CommandController {
 			$this->flashMessage('Everything up to date. No migrations needed.', $flashMessageTitle, FlashMessage::NOTICE);
 		} else {
 			if (count($errors) !== $executedFiles) {
-				$this->flashMessage('Migration of ' . $executedFiles . ' file' . ($executedFiles > 1 ? 's' : '') . '  completed.', $flashMessageTitle, FlashMessage::OK);
+				$this->flashMessage('Migration of ' . $executedFiles . ' file' . ($executedFiles > 1 ? 's' : '') . ' completed.', $flashMessageTitle, FlashMessage::OK);
 			} else {
 				$this->flashMessage('Migration failed.', $flashMessageTitle, FlashMessage::ERROR);
 			}
