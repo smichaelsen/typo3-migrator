@@ -40,7 +40,7 @@ class MigrationCommandController extends CommandController {
 	protected function initialize() {
 		$this->databaseConnection = $GLOBALS['TYPO3_DB'];
 		$this->extensionConfiguration = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['migrator']);
-		$this->lastExecutedVersion = intval($this->registry->get('AppZap\\Migrator', 'lastExecutedVersion'));
+		$this->lastExecutedVersion = (int) $this->registry->get('AppZap\\Migrator', 'lastExecutedVersion');
 	}
 
 	/**
@@ -50,11 +50,11 @@ class MigrationCommandController extends CommandController {
 		$this->initialize();
 		$sqlFolderPath = realpath(PATH_site . $this->extensionConfiguration['sqlFolderPath']);
 		if (!$sqlFolderPath) {
-			$message = 'SQL folder not found. Please make sure "' . $this->extensionConfiguration['sqlFolderPath'] . '" (relative to your web root) exists!';
+			$message = 'SQL folder not found. Please make sure "' . htmlspecialchars($this->extensionConfiguration['sqlFolderPath']) . '" (relative to your web root) exists!';
 			$this->flashMessage($message, 'Migration Command', FlashMessage::ERROR);
 		} else {
 			$iterator = new \DirectoryIterator($sqlFolderPath);
-			$highestExecutedVersion = NULL;
+			$highestExecutedVersion = 0;
 			$errors = array();
 			$executedFiles = 0;
 			foreach ($iterator as $fileinfo) {
