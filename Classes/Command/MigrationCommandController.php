@@ -60,6 +60,10 @@ class MigrationCommandController extends CommandController {
 				/** @var $fileinfo \DirectoryIterator */
 				if ($fileinfo->getExtension() === 'sql') {
 					$executedVersion = $this->migrateSqlFile($fileinfo, $errors);
+					// migration stops on the 1st erroneous sql file
+					if (count($errors)) {
+						break;
+					}
 					if ($executedVersion) {
 						$executedFiles++;
 						$highestExecutedVersion = max($highestExecutedVersion, $executedVersion);
@@ -129,10 +133,10 @@ class MigrationCommandController extends CommandController {
 	 */
 	protected function enqueueFlashMessages($executedFiles, $errors) {
 		$flashMessageTitle = 'Migration Command';
-		if ($executedFiles === 0) {
+		if ($executedFiles === 0 && count($errors) === 0) {
 			$this->flashMessage('Everything up to date. No migrations needed.', $flashMessageTitle, FlashMessage::NOTICE);
 		} else {
-			if (count($errors) !== $executedFiles) {
+			if ($executedFiles) {
 				$this->flashMessage('Migration of ' . $executedFiles . ' file' . ($executedFiles > 1 ? 's' : '') . ' completed.', $flashMessageTitle, FlashMessage::OK);
 			} else {
 				$this->flashMessage('Migration failed.', $flashMessageTitle, FlashMessage::ERROR);
