@@ -14,7 +14,7 @@ $EM_CONF['migrator'] = array(
 	'constraints' => array(
 		'depends' => array(
 			'php' => '5.3.0-0.0.0',
-			'typo3' => '6.1.0-0.0.0',
+			'typo3' => '6.1.0-6.2.99',
 			'extbase' => '0.0.0-0.0.0',
 		),
 	),

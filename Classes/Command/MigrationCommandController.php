@@ -19,6 +19,11 @@ class MigrationCommandController extends CommandController {
 	protected $extensionConfiguration;
 
 	/**
+	 * @var int
+	 */
+	protected $lastExecutedVersion;
+
+	/**
 	 * @var string
 	 */
 	protected $shellCommandTemplate = '%s --default-character-set=UTF8 -u"%s" -p"%s" -h "%s" -D "%s" -e "source %s" 2>&1';
@@ -35,6 +40,7 @@ class MigrationCommandController extends CommandController {
 	protected function initialize() {
 		$this->databaseConnection = $GLOBALS['TYPO3_DB'];
 		$this->extensionConfiguration = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['migrator']);
+		$this->lastExecutedVersion = intval($this->registry->get('AppZap\\Migrator', 'lastExecutedVersion'));
 	}
 
 	/**
@@ -43,43 +49,59 @@ class MigrationCommandController extends CommandController {
 	public function migrateSqlFilesCommand() {
 		$this->initialize();
 		$sqlFolderPath = realpath(PATH_site . $this->extensionConfiguration['sqlFolderPath']);
-		$iterator = new \DirectoryIterator($sqlFolderPath);
-		$highestExecutedVersion = NULL;
-		$lastExecutedVersion = intval($this->registry->get('AppZap\\Migrator', 'lastExecutedVersion'));
-		$errors = array();
-		$executedFiles = 0;
-		foreach ($iterator as $fileinfo) {
-			/** @var $fileinfo \DirectoryIterator */
-			if ($fileinfo->getExtension() === 'sql') {
-				$fileVersion = intval($fileinfo->getBasename('.sql'));
-				if ($fileVersion > $lastExecutedVersion) {
-					$filePath = $fileinfo->getPathname();
-					$shellCommand = sprintf(
-						$this->shellCommandTemplate,
-						$this->extensionConfiguration['mysqlBinaryPath'],
-						$GLOBALS['TYPO3_CONF_VARS']['DB']['username'],
-						$GLOBALS['TYPO3_CONF_VARS']['DB']['password'],
-						$GLOBALS['TYPO3_CONF_VARS']['DB']['host'],
-						$GLOBALS['TYPO3_CONF_VARS']['DB']['database'],
-						$filePath
-					);
-					$output = shell_exec($shellCommand);
-					$ouputMessages = explode("\n", $output);
-					foreach ($ouputMessages as $ouputMessage) {
-						if (trim($ouputMessage) && strpos($ouputMessage, 'Warning') === FALSE) {
-							if (!is_array($errors[$fileVersion])) {
-								$errors[$fileinfo->getFilename()] = array();
-							}
-							$errors[$fileinfo->getFilename()][] = $ouputMessage;
-						}
+		if (!$sqlFolderPath) {
+			$message = 'SQL folder not found. Please make sure "' . $this->extensionConfiguration['sqlFolderPath'] . '" (relative to your web root) exists!';
+			$this->flashMessage($message, 'Migration Command', FlashMessage::ERROR);
+		} else {
+			$iterator = new \DirectoryIterator($sqlFolderPath);
+			$highestExecutedVersion = NULL;
+			$errors = array();
+			$executedFiles = 0;
+			foreach ($iterator as $fileinfo) {
+				/** @var $fileinfo \DirectoryIterator */
+				if ($fileinfo->getExtension() === 'sql') {
+					$executedVersion = $this->migrateSqlFile($fileinfo, $errors);
+					if ($executedVersion) {
+						$executedFiles++;
+						$highestExecutedVersion = max($highestExecutedVersion, $executedVersion);
 					}
-					$executedFiles++;
-					$highestExecutedVersion = max($highestExecutedVersion, $fileVersion);
 				}
 			}
+			$this->enqueueFlashMessages($executedFiles, $errors);
+			$this->registry->set('AppZap\\Migrator', 'lastExecutedVersion', max($this->lastExecutedVersion, $highestExecutedVersion));
 		}
-		$this->enqueueFlashMessages($executedFiles, $errors);
-		$this->registry->set('AppZap\\Migrator', 'lastExecutedVersion', max($lastExecutedVersion, $highestExecutedVersion));
+	}
+
+	/**
+	 * @param \DirectoryIterator $fileinfo
+	 * @param array $errors
+	 */
+	protected function migrateSqlFile($fileinfo, &$errors) {
+		$fileVersion = intval($fileinfo->getBasename('.sql'));
+		if ($fileVersion > $this->lastExecutedVersion) {
+			$filePath = $fileinfo->getPathname();
+			$shellCommand = sprintf(
+				$this->shellCommandTemplate,
+				$this->extensionConfiguration['mysqlBinaryPath'],
+				$GLOBALS['TYPO3_CONF_VARS']['DB']['username'],
+				$GLOBALS['TYPO3_CONF_VARS']['DB']['password'],
+				$GLOBALS['TYPO3_CONF_VARS']['DB']['host'],
+				$GLOBALS['TYPO3_CONF_VARS']['DB']['database'],
+				$filePath
+			);
+			$output = shell_exec($shellCommand);
+			$ouputMessages = explode("\n", $output);
+			foreach ($ouputMessages as $ouputMessage) {
+				if (trim($ouputMessage) && strpos($ouputMessage, 'Warning') === FALSE) {
+					if (!is_array($errors[$fileVersion])) {
+						$errors[$fileinfo->getFilename()] = array();
+					}
+					$errors[$fileinfo->getFilename()][] = $ouputMessage;
+				}
+			}
+			return $fileVersion;
+		}
+		return NULL;
 	}
 
 	/**
