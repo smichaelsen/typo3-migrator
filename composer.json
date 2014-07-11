@@ -1,0 +1,5 @@
+{
+	"name": "appzap/migrator",
+	"description": "A TYPO3 Extension for SQL Migrations",
+	"type": "typo3-cms-extension"
+}
