@@ -75,9 +75,10 @@ class MigrationCommandController extends CommandController {
 	/**
 	 * @param \DirectoryIterator $fileinfo
 	 * @param array $errors
+	 * @return int
 	 */
-	protected function migrateSqlFile($fileinfo, &$errors) {
-		$fileVersion = intval($fileinfo->getBasename('.sql'));
+	protected function migrateSqlFile(\DirectoryIterator $fileinfo, &$errors) {
+		$fileVersion = (int) $fileinfo->getBasename('.sql');
 		if ($fileVersion > $this->lastExecutedVersion) {
 			$filePath = $fileinfo->getPathname();
 			$shellCommand = sprintf(
@@ -93,7 +94,7 @@ class MigrationCommandController extends CommandController {
 			$ouputMessages = explode("\n", $output);
 			foreach ($ouputMessages as $ouputMessage) {
 				if (trim($ouputMessage) && strpos($ouputMessage, 'Warning') === FALSE) {
-					if (!is_array($errors[$fileVersion])) {
+					if (!is_array($errors[$fileinfo->getFilename()])) {
 						$errors[$fileinfo->getFilename()] = array();
 					}
 					$errors[$fileinfo->getFilename()][] = $ouputMessage;
