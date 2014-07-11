@@ -1,5 +1,4 @@
 <?php
-
 namespace AppZap\Migrator\Command;
 
 use TYPO3\CMS\Core\Messaging\FlashMessage;
