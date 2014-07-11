@@ -7,7 +7,9 @@ Apply SQL changes on all developer instances or even deploy changes to your Live
 
 ## What it does
 
-The migrator just executes numbered sql files (001.sql, 002.sql, etc) that you place in a certain directory. So all you need to update the databases of various TYPO3 installations is create a SQL file and distribute it everywhere you need it.
+The migrator just executes numbered sql files (`001.sql`, `002.sql`, etc) that you place in a certain directory. Once the migrator is called it checks for new .sql files and executes them in the right order.
+
+So if you want to distribute a SQL Command (e.g. an INSERT statement for a new record) accross your installations, just create a file with a higher number than the existing ones and push it into your repository. Once others pull it and execute the migrator they will have your changes applied!
 
 ## Setup
 
