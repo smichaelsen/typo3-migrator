@@ -33,6 +33,26 @@ Create a Scheduler Task of the class "Extbase Command Controller Task" and choos
 
 ## Troubleshooting
 
-If the execution of a SQL file fails, the counter of the last last executed file is not increased and the file will be executed again on the next run. Notice that it already might have done changes to your database before it crashed.
+If the execution of an SQL file fails, the counter of the last last executed file is not increased and the file will be executed again on the next run. Notice that it already might have done changes to your database before it crashed.
 
 If you want to see/change the internal pointer of the last executed SQL file, you'll find it in the table `sys_registry` with the namespace and key `AppZap\Migrator` / `lastExecutedVersion`.
+
+### Can I omit migration numbers?
+
+Yes, after `003.sql` the next file can be `005.sql`. Be aware once `005.sql` is executed and you add `004.sql` afterwards, `004.sql` will never be executed.
+
+### Can I use timestamps as migration numbers?
+
+Yes.
+
+### Can I start at 0?
+
+No, at the moment the first file must be `001.sql` or higher.
+
+### Do I need the leading zeros?
+
+No, you can also use `1.sql` and so on.
+
+### Can I undo a migration?
+
+No, the migrator only knows one direction. You'll need to do it manually.
