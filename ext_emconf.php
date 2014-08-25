@@ -5,7 +5,7 @@
 $EM_CONF['migrator'] = array(
 	'title' => 'DB Migrator',
 	'description' => 'TYPO3 DB Migrator',
-	'category' => 'backend',
+	'category' => 'be',
 	'state' => 'beta',
 	'author' => 'Sebastian Michaelsen',
 	'author_email' => 'sebastian@app-zap.de',
