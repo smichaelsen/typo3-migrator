@@ -1,5 +1,4 @@
 <?php
-
 namespace AppZap\Migrator\Command;
 
 use TYPO3\CMS\Core\Messaging\FlashMessage;
@@ -19,6 +18,11 @@ class MigrationCommandController extends CommandController {
 	protected $extensionConfiguration;
 
 	/**
+	 * @var int
+	 */
+	protected $lastExecutedVersion;
+
+	/**
 	 * @var string
 	 */
 	protected $shellCommandTemplate = '%s --default-character-set=UTF8 -u"%s" -p"%s" -h "%s" -D "%s" -e "source %s" 2>&1';
@@ -35,6 +39,7 @@ class MigrationCommandController extends CommandController {
 	protected function initialize() {
 		$this->databaseConnection = $GLOBALS['TYPO3_DB'];
 		$this->extensionConfiguration = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['migrator']);
+		$this->lastExecutedVersion = (int) $this->registry->get('AppZap\\Migrator', 'lastExecutedVersion');
 	}
 
 	/**
@@ -43,43 +48,64 @@ class MigrationCommandController extends CommandController {
 	public function migrateSqlFilesCommand() {
 		$this->initialize();
 		$sqlFolderPath = realpath(PATH_site . $this->extensionConfiguration['sqlFolderPath']);
-		$iterator = new \DirectoryIterator($sqlFolderPath);
-		$highestExecutedVersion = NULL;
-		$lastExecutedVersion = intval($this->registry->get('AppZap\\Migrator', 'lastExecutedVersion'));
-		$errors = array();
-		$executedFiles = 0;
-		foreach ($iterator as $fileinfo) {
-			/** @var $fileinfo \DirectoryIterator */
-			if ($fileinfo->getExtension() === 'sql') {
-				$fileVersion = intval($fileinfo->getBasename('.sql'));
-				if ($fileVersion > $lastExecutedVersion) {
-					$filePath = $fileinfo->getPathname();
-					$shellCommand = sprintf(
-						$this->shellCommandTemplate,
-						$this->extensionConfiguration['mysqlBinaryPath'],
-						$GLOBALS['TYPO3_CONF_VARS']['DB']['username'],
-						$GLOBALS['TYPO3_CONF_VARS']['DB']['password'],
-						$GLOBALS['TYPO3_CONF_VARS']['DB']['host'],
-						$GLOBALS['TYPO3_CONF_VARS']['DB']['database'],
-						$filePath
-					);
-					$output = shell_exec($shellCommand);
-					$ouputMessages = explode("\n", $output);
-					foreach ($ouputMessages as $ouputMessage) {
-						if (trim($ouputMessage) && strpos($ouputMessage, 'Warning') === FALSE) {
-							if (!is_array($errors[$fileVersion])) {
-								$errors[$fileinfo->getFilename()] = array();
-							}
-							$errors[$fileinfo->getFilename()][] = $ouputMessage;
-						}
+		if (!$sqlFolderPath) {
+			$message = 'SQL folder not found. Please make sure "' . htmlspecialchars($this->extensionConfiguration['sqlFolderPath']) . '" (relative to your web root) exists!';
+			$this->flashMessage($message, 'Migration Command', FlashMessage::ERROR);
+		} else {
+			$iterator = new \DirectoryIterator($sqlFolderPath);
+			$highestExecutedVersion = 0;
+			$errors = array();
+			$executedFiles = 0;
+			foreach ($iterator as $fileinfo) {
+				/** @var $fileinfo \DirectoryIterator */
+				if ($fileinfo->getExtension() === 'sql') {
+					$executedVersion = $this->migrateSqlFile($fileinfo, $errors);
+					// migration stops on the 1st erroneous sql file
+					if (count($errors)) {
+						break;
 					}
-					$executedFiles++;
-					$highestExecutedVersion = max($highestExecutedVersion, $fileVersion);
+					if ($executedVersion) {
+						$executedFiles++;
+						$highestExecutedVersion = max($highestExecutedVersion, $executedVersion);
+					}
 				}
 			}
+			$this->enqueueFlashMessages($executedFiles, $errors);
+			$this->registry->set('AppZap\\Migrator', 'lastExecutedVersion', max($this->lastExecutedVersion, $highestExecutedVersion));
 		}
-		$this->enqueueFlashMessages($executedFiles, $errors);
-		$this->registry->set('AppZap\\Migrator', 'lastExecutedVersion', max($lastExecutedVersion, $highestExecutedVersion));
+	}
+
+	/**
+	 * @param \DirectoryIterator $fileinfo
+	 * @param array $errors
+	 * @return int
+	 */
+	protected function migrateSqlFile(\DirectoryIterator $fileinfo, &$errors) {
+		$fileVersion = (int) $fileinfo->getBasename('.sql');
+		if ($fileVersion > $this->lastExecutedVersion) {
+			$filePath = $fileinfo->getPathname();
+			$shellCommand = sprintf(
+				$this->shellCommandTemplate,
+				$this->extensionConfiguration['mysqlBinaryPath'],
+				$GLOBALS['TYPO3_CONF_VARS']['DB']['username'],
+				$GLOBALS['TYPO3_CONF_VARS']['DB']['password'],
+				$GLOBALS['TYPO3_CONF_VARS']['DB']['host'],
+				$GLOBALS['TYPO3_CONF_VARS']['DB']['database'],
+				$filePath
+			);
+			$output = shell_exec($shellCommand);
+			$ouputMessages = explode("\n", $output);
+			foreach ($ouputMessages as $ouputMessage) {
+				if (trim($ouputMessage) && strpos($ouputMessage, 'Warning') === FALSE) {
+					if (!is_array($errors[$fileinfo->getFilename()])) {
+						$errors[$fileinfo->getFilename()] = array();
+					}
+					$errors[$fileinfo->getFilename()][] = $ouputMessage;
+				}
+			}
+			return $fileVersion;
+		}
+		return NULL;
 	}
 
 	/**
@@ -107,10 +133,10 @@ class MigrationCommandController extends CommandController {
 	 */
 	protected function enqueueFlashMessages($executedFiles, $errors) {
 		$flashMessageTitle = 'Migration Command';
-		if ($executedFiles === 0) {
+		if ($executedFiles === 0 && count($errors) === 0) {
 			$this->flashMessage('Everything up to date. No migrations needed.', $flashMessageTitle, FlashMessage::NOTICE);
 		} else {
-			if (count($errors) !== $executedFiles) {
+			if ($executedFiles) {
 				$this->flashMessage('Migration of ' . $executedFiles . ' file' . ($executedFiles > 1 ? 's' : '') . ' completed.', $flashMessageTitle, FlashMessage::OK);
 			} else {
 				$this->flashMessage('Migration failed.', $flashMessageTitle, FlashMessage::ERROR);
