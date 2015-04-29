@@ -49,30 +49,34 @@ class MigrationCommandController extends CommandController {
 		$this->initialize();
 		$sqlFolderPath = realpath(PATH_site . $this->extensionConfiguration['sqlFolderPath']);
 		if (!$sqlFolderPath) {
-			$message = 'SQL folder not found. Please make sure "' . htmlspecialchars($this->extensionConfiguration['sqlFolderPath']) . '" (relative to your web root) exists!';
-			$this->flashMessage($message, 'Migration Command', FlashMessage::ERROR);
-		} else {
-			$iterator = new \DirectoryIterator($sqlFolderPath);
-			$highestExecutedVersion = 0;
-			$errors = array();
-			$executedFiles = 0;
-			foreach ($iterator as $fileinfo) {
-				/** @var $fileinfo \DirectoryIterator */
-				if ($fileinfo->getExtension() === 'sql') {
-					$executedVersion = $this->migrateSqlFile($fileinfo, $errors);
-					// migration stops on the 1st erroneous sql file
-					if (count($errors)) {
-						break;
-					}
-					if ($executedVersion) {
-						$executedFiles++;
-						$highestExecutedVersion = max($highestExecutedVersion, $executedVersion);
-					}
+			GeneralUtility::mkdir_deep(PATH_site . $this->extensionConfiguration['sqlFolderPath']);
+			$sqlFolderPath = realpath(PATH_site . $this->extensionConfiguration['sqlFolderPath']);
+			if (!$sqlFolderPath) {
+				$message = 'SQL folder not found. Please make sure "' . htmlspecialchars($this->extensionConfiguration['sqlFolderPath']) . '" (relative to your web root) exists!';
+				$this->flashMessage($message, 'Migration Command', FlashMessage::ERROR);
+			}
+			return;
+		}
+		$iterator = new \DirectoryIterator($sqlFolderPath);
+		$highestExecutedVersion = 0;
+		$errors = array();
+		$executedFiles = 0;
+		foreach ($iterator as $fileinfo) {
+			/** @var $fileinfo \DirectoryIterator */
+			if ($fileinfo->getExtension() === 'sql') {
+				$executedVersion = $this->migrateSqlFile($fileinfo, $errors);
+				// migration stops on the 1st erroneous sql file
+				if (count($errors)) {
+					break;
+				}
+				if ($executedVersion) {
+					$executedFiles++;
+					$highestExecutedVersion = max($highestExecutedVersion, $executedVersion);
 				}
 			}
-			$this->enqueueFlashMessages($executedFiles, $errors);
-			$this->registry->set('AppZap\\Migrator', 'lastExecutedVersion', max($this->lastExecutedVersion, $highestExecutedVersion));
 		}
+		$this->enqueueFlashMessages($executedFiles, $errors);
+		$this->registry->set('AppZap\\Migrator', 'lastExecutedVersion', max($this->lastExecutedVersion, $highestExecutedVersion));
 	}
 
 	/**
