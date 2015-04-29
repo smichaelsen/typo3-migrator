@@ -1,5 +1,5 @@
-TYPO3 Migrator
-==============
+TYPO3 Migrator |exticon|
+========================
 
 A TYPO3 Extension for SQL Migrations
 ------------------------------------
@@ -91,3 +91,5 @@ Can I undo a migration?
 
 No, the migrator only knows one direction. You’ll need to do it
 manually.
+
+.. |exticon| image:: https://raw.githubusercontent.com/smichaelsen/typo3-migrator/develop/ext_icon.gif

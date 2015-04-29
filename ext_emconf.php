@@ -10,12 +10,10 @@ $EM_CONF['migrator'] = array(
 	'author' => 'Sebastian Michaelsen',
 	'author_email' => 'sebastian@app-zap.de',
 	'author_company' => 'app zap',
-	'version' => '1.1.3',
+	'version' => '1.2.0',
 	'constraints' => array(
 		'depends' => array(
-			'php' => '5.3.0-0.0.0',
-			'typo3' => '6.1.0-6.2.99',
-			'extbase' => '0.0.0-0.0.0',
+			'typo3' => '6.1.0-7.99.99',
 		),
 	),
 );
