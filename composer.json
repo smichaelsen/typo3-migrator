@@ -9,5 +9,10 @@
 	],
 	"description": "A TYPO3 Extension for SQL Migrations",
 	"license": "GPL-2.0",
-	"type": "typo3-cms-extension"
+	"type": "typo3-cms-extension",
+	"autoload": {
+		"psr-4": {
+			"AppZap\\Migrator\\": "Classes/"
+		}
+	}
 }
