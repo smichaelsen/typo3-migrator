@@ -25,6 +25,8 @@ applied!
 Setup
 -----
 
+-  Make sure the backend user ``_cli_lowlevel`` exists. It doesn't need
+   any rights.
 -  Create a folder where you want to have your SQL files. If it is
    inside your web root, protect it with a *.htaccess* file with the
    following contents: ``deny from all``.
